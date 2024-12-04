@@ -1,25 +1,30 @@
-   // Simulador de Préstamos Bancarios
+// Simulador de Préstamos Bancarios
 alert("¡Bienvenido al simulador de préstamos bancarios!");
 
-do {
-    // Solicitar datos al usuario
-    let monto = parseFloat(prompt("Ingrese el monto del préstamo ($):"));
-    let tasaInteres = parseFloat(prompt("Ingrese la tasa de interés anual (%):"));
-    let plazo = parseInt(prompt("Ingrese el plazo en meses:"));
+// Función para solicitar datos al usuario
+const solicitarDatos = () => {
+    const monto = parseFloat(prompt("Ingrese el monto del préstamo ($):"));
+    const tasaInteres = parseFloat(prompt("Ingrese la tasa de interés anual (%):"));
+    const plazo = parseInt(prompt("Ingrese el plazo en meses:"));
+    return { monto, tasaInteres, plazo };
+};
 
-    // Validar entradas
-    if (isNaN(monto) || monto <= 0 || isNaN(tasaInteres) || tasaInteres <= 0 || isNaN(plazo) || plazo <= 0) {
-        alert("Por favor, ingrese valores válidos para monto, interés y plazo.");
-        continue;
-    }
+// Función para validar entradas
+function validarEntradas({ monto, tasaInteres, plazo }) {
+    return !(isNaN(monto) || monto <= 0 || isNaN(tasaInteres) || tasaInteres <= 0 || isNaN(plazo) || plazo <= 0);
+}
 
-    // Calcular el pago mensual y el costo total
-    let tasaMensual = tasaInteres / 100 / 12;
-    let pagoMensual = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -plazo));
-    let totalPago = pagoMensual * plazo;
-    let totalInteres = totalPago - monto;
+// Función para calcular los pagos
+function calcularPagos(monto, tasaInteres, plazo) {
+    const tasaMensual = tasaInteres / 100 / 12;
+    const pagoMensual = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -plazo));
+    const totalPago = pagoMensual * plazo;
+    const totalInteres = totalPago - monto;
+    return { pagoMensual, totalPago, totalInteres, tasaMensual };
+}
 
-    // Mostrar resultados
+// Función para mostrar resultados
+const mostrarResultados = ({ monto, tasaInteres, plazo }, { pagoMensual, totalPago, totalInteres }) => {
     alert(
         `Resultados del Préstamo:\n` +
         `Monto solicitado: $${monto.toFixed(2)}\n` +
@@ -29,21 +34,38 @@ do {
         `Total a pagar: $${totalPago.toFixed(2)}\n` +
         `Intereses totales: $${totalInteres.toFixed(2)}`
     );
+};
 
-    // Generar desglose mensual
+// Función para generar el desglose mensual
+const generarDesgloseMensual = (monto, plazo, tasaMensual, pagoMensual) => {
     let saldoRestante = monto;
     console.log("Desglose Mensual:");
     console.log("Mes | Interés | Amortización | Saldo Restante");
     for (let mes = 1; mes <= plazo; mes++) {
-        let interesMensual = saldoRestante * tasaMensual;
-        let amortizacion = pagoMensual - interesMensual;
+        const interesMensual = saldoRestante * tasaMensual;
+        const amortizacion = pagoMensual - interesMensual;
         saldoRestante -= amortizacion;
         console.log(
             `${mes} | $${interesMensual.toFixed(2)} | $${amortizacion.toFixed(2)} | $${saldoRestante.toFixed(2)}`
         );
     }
+};
 
-    // Preguntar si desea realizar otra simulación
-} while (confirm("¿Desea realizar otra simulación?"));
+// Ciclo principal
+let continuar;
+do {
+    const datos = solicitarDatos();
+
+    if (!validarEntradas(datos)) {
+        alert("Por favor, ingrese valores válidos para monto, interés y plazo.");
+        continue;
+    }
+
+    const calculos = calcularPagos(datos.monto, datos.tasaInteres, datos.plazo);
+    mostrarResultados(datos, calculos);
+    generarDesgloseMensual(datos.monto, datos.plazo, calculos.tasaMensual, calculos.pagoMensual);
+
+    continuar = confirm("¿Desea realizar otra simulación?");
+} while (continuar);
 
 alert("Gracias por usar el simulador de préstamos. ¡Hasta pronto!");
