@@ -29,6 +29,10 @@
                     <input type="number" id="cuotas" class="form-control" required>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label">Tasa de interés anual (%):</label>
+                    <input type="number" id="tasa" class="form-control" placeholder="Ej: 12" required>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Tipo de préstamo:</label>
                     <select id="tipo" class="form-select">
                         <option value="fijo">Cuota Fija</option>
@@ -39,10 +43,8 @@
             </form>
         </div>
 
-        <!-- Contenedor de resultados -->
         <div id="results" class="card mt-4 p-4" style="display: none;"></div>
 
-        <!-- Contenedor del gráfico -->
         <div class="card mt-4 p-4" id="chartContainer" style="display: none;">
             <canvas id="chart"></canvas>
         </div>

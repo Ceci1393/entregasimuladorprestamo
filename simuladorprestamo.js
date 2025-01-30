@@ -16,15 +16,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         calcularCuotas() {
+            const tasaMensual = this.tasa / 100 / 12;
+
             if (this.tipo === "fijo") {
-                const tasaMensual = this.tasa / 100 / 12;
                 const cuota = (this.monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -this.cuotas));
                 this.pagos = Array(this.cuotas).fill(cuota.toFixed(2));
             } else {
                 let saldo = this.monto;
                 let cuotaBase = saldo / this.cuotas;
                 this.pagos = Array.from({ length: this.cuotas }, (_, i) => {
-                    let interes = saldo * (this.tasa / 100 / 12);
+                    let interes = saldo * tasaMensual;
                     let cuota = cuotaBase + interes;
                     saldo -= cuotaBase;
                     return cuota.toFixed(2);
@@ -33,32 +34,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function cargarTasas() {
-        try {
-            const response = await fetch("tasas.json");
-            if (!response.ok) throw new Error("Error al cargar tasas");
-            return await response.json();
-        } catch (error) {
-            console.error(error);
-            return { fijo: 10, variable: 15 }; // Valores por defecto
-        }
-    }
-
-    async function simularPrestamo(event) {
+    function simularPrestamo(event) {
         event.preventDefault();
         
         const monto = parseFloat(document.getElementById("monto").value);
         const cuotas = parseInt(document.getElementById("cuotas").value);
+        let tasa = parseFloat(document.getElementById("tasa").value);
         const tipo = document.getElementById("tipo").value;
 
-        if (isNaN(monto) || isNaN(cuotas) || cuotas <= 0 || monto <= 0) {
+        if (isNaN(monto) || isNaN(cuotas) || cuotas <= 0 || monto <= 0 || isNaN(tasa) || tasa <= 0) {
             alert("Ingrese valores válidos.");
             return;
         }
 
-        const tasas = await cargarTasas();
-        const tasa = tipo === "fijo" ? tasas.fijo : tasas.variable;
-        
         const prestamo = new Prestamo(monto, cuotas, tipo, tasa);
         prestamo.calcularCuotas();
 
