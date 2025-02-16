@@ -1,98 +1,167 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("loanForm");
-    const resultContainer = document.getElementById("results");
-    const chartContainer = document.getElementById("chartContainer");
-    const chartCanvas = document.getElementById("chart");
+// Función para guardar datos en LocalStorage
+function guardarDatosEnStorage(datos) {
+    localStorage.setItem('prestamo', JSON.stringify(datos));
+}
 
-    let chartInstance = null;
+// Función para obtener datos de LocalStorage
+function obtenerDatosDeStorage() {
+    return JSON.parse(localStorage.getItem('prestamo')) || null;
+}
 
-    class Prestamo {
-        constructor(monto, cuotas, tipo, tasa) {
-            this.monto = monto;
-            this.cuotas = cuotas;
-            this.tipo = tipo;
-            this.tasa = tasa;
-            this.pagos = [];
-        }
+// Función para mostrar notificaciones con SweetAlert2
+function mostrarNotificacion(tipo, mensaje) {
+    Swal.fire({
+        title: tipo === 'error' ? 'Error' : 'Éxito',
+        text: mensaje,
+        icon: tipo,
+        confirmButtonText: 'OK'
+    });
+}
 
-        calcularCuotas() {
-            const tasaMensual = this.tasa / 100 / 12;
+// Obtener tasa de interés desde la API
+async function obtenerTasaInteres() {
+    const tasaGuardada = localStorage.getItem("tasaInteres");
+    if (tasaGuardada) {
+        document.getElementById("tasa").value = tasaGuardada;
+        return parseFloat(tasaGuardada);
+    }
 
-            if (this.tipo === "fijo") {
-                const cuota = (this.monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -this.cuotas));
-                this.pagos = Array(this.cuotas).fill(cuota.toFixed(2));
-            } else {
-                let saldo = this.monto;
-                let cuotaBase = saldo / this.cuotas;
-                this.pagos = Array.from({ length: this.cuotas }, (_, i) => {
-                    let interes = saldo * tasaMensual;
-                    let cuota = cuotaBase + interes;
-                    saldo -= cuotaBase;
-                    return cuota.toFixed(2);
-                });
+    try {
+        const respuesta = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+        if (!respuesta.ok) throw new Error("Error al obtener la tasa de interés.");
+
+        const datos = await respuesta.json();
+        const tasaCalculada = Math.abs(datos.rates.EUR * 10);
+
+        document.getElementById("tasa").value = tasaCalculada.toFixed(2);
+        localStorage.setItem("tasaInteres", tasaCalculada.toFixed(2));
+
+        return tasaCalculada;
+
+    } catch (error) {
+        console.error(" Error al conectar con la API:", error);
+        mostrarNotificacion('error', 'No se pudo obtener la tasa de interés.');
+
+        return 5; // Valor predeterminado en caso de error
+    }
+}
+
+// Función para actualizar la tasa de interés cuando se cambia la opción
+async function actualizarTasaInteres() {
+    let tasaInteres = await obtenerTasaInteres();
+    const tipoTasa = document.getElementById("tipoTasa").value;
+
+    if (tipoTasa === "variable") {
+        tasaInteres += 2; // Si es variable, sumamos 2%
+    }
+
+    document.getElementById("tasa").value = tasaInteres.toFixed(2);
+}
+
+//  Detectar cambios en la selección de tasa y actualizarla automáticamente
+document.getElementById("tipoTasa").addEventListener("change", actualizarTasaInteres);
+
+// Función para calcular el préstamo
+async function calcularPrestamo() {
+    const monto = parseFloat(document.getElementById("monto").value);
+    const cuotas = parseInt(document.getElementById("cuotas").value);
+    const tipoTasa = document.getElementById("tipoTasa").value;
+
+    if (isNaN(monto) || isNaN(cuotas) || monto <= 0 || cuotas <= 0) {
+        mostrarNotificacion('error', 'Por favor ingresa valores válidos.');
+        return;
+    }
+
+    let tasaInteres = await obtenerTasaInteres();
+    if (tipoTasa === "variable") {
+        tasaInteres += 2;
+    }
+
+    const totalPagar = monto + (monto * (tasaInteres / 100));
+
+    guardarDatosEnStorage({ monto, cuotas, tasaInteres, totalPagar, tipoTasa });
+
+    mostrarNotificacion('success', `Monto: $${monto}\nTotal a Pagar: $${totalPagar.toFixed(2)}\nTipo de Tasa: ${tipoTasa === "fija" ? "Tasa Fija" : "Tasa Variable"}`);
+
+    mostrarGraficoCuotas(cuotas, totalPagar);
+}
+
+// Función para mostrar el gráfico de pagos mensuales
+function mostrarGraficoCuotas(cuotas, totalPagar) {
+    document.getElementById("chartContainer").style.display = "block";
+
+    const ctx = document.getElementById("chart").getContext("2d");
+
+    const pagoMensual = totalPagar / cuotas;
+    let pagos = [];
+    let labels = [];
+
+    for (let i = 1; i <= cuotas; i++) {
+        pagos.push(pagoMensual);
+        labels.push(`Cuota ${i}`);
+    }
+
+    //  Destruir gráfico previo si existe
+    if (window.miGrafico) {
+        window.miGrafico.destroy();
+    }
+
+    // `Chart.js`
+    window.miGrafico = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Pago por Cuota ($)",
+                data: pagos,
+                backgroundColor: "rgba(54, 162, 235, 0.6)",
+                borderColor: "rgba(54, 162, 235, 1)",
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: {
+                duration: 1500,
+                easing: 'easeOutBounce'
             }
         }
-    }
+    });
+}
 
-    function simularPrestamo(event) {
-        event.preventDefault();
-        
-        const monto = parseFloat(document.getElementById("monto").value);
-        const cuotas = parseInt(document.getElementById("cuotas").value);
-        let tasa = parseFloat(document.getElementById("tasa").value);
-        const tipo = document.getElementById("tipo").value;
-
-        if (isNaN(monto) || isNaN(cuotas) || cuotas <= 0 || monto <= 0 || isNaN(tasa) || tasa <= 0) {
-            alert("Ingrese valores válidos.");
-            return;
+// Función para reiniciar el simulador
+function reiniciarSimulador() {
+    Swal.fire({
+        title: "¿Estás seguro?",
+        text: "Esto eliminará todos los datos guardados del simulador.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, borrar",
+        cancelButtonText: "Cancelar"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.clear();
+            document.getElementById("loanForm").reset();
+            document.getElementById("tasa").value = "";
+            document.getElementById("chartContainer").style.display = "none";
+            mostrarNotificacion('success', "Simulador reiniciado con éxito.");
         }
+    });
+}
 
-        const prestamo = new Prestamo(monto, cuotas, tipo, tasa);
-        prestamo.calcularCuotas();
+// Cargar datos guardados y obtener la tasa automáticamente al iniciar
+document.addEventListener("DOMContentLoaded", async () => {
+    await actualizarTasaInteres();
 
-        mostrarResultados(prestamo);
-        generarGrafico(prestamo);
+    const datosGuardados = obtenerDatosDeStorage();
+    if (datosGuardados) {
+        document.getElementById("tipoTasa").value = datosGuardados.tipoTasa || "fija";
+        document.getElementById("tasa").value = datosGuardados.tasaInteres.toFixed(2);
+        mostrarNotificacion('info', `Último préstamo: Monto $${datosGuardados.monto}, Total $${datosGuardados.totalPagar.toFixed(2)}, Tasa: ${datosGuardados.tipoTasa}`);
     }
-
-    function mostrarResultados(prestamo) {
-        resultContainer.innerHTML = `
-            <h3 class="text-primary">Resultados del Préstamo</h3>
-            <p><strong>Monto:</strong> $${prestamo.monto}</p>
-            <p><strong>Cuotas:</strong> ${prestamo.cuotas}</p>
-            <p><strong>Tasa de interés:</strong> ${prestamo.tasa}%</p>
-            <h4 class="mt-3">Detalle de Cuotas:</h4>
-            <ul class="list-group">
-                ${prestamo.pagos.map((pago, index) => `<li class="list-group-item">Mes ${index + 1}: $${pago}</li>`).join("")}
-            </ul>
-        `;
-
-        resultContainer.style.display = "block";
-    }
-
-    function generarGrafico(prestamo) {
-        if (chartInstance) chartInstance.destroy();
-
-        const ctx = chartCanvas.getContext("2d");
-        chartInstance = new Chart(ctx, {
-            type: "line",
-            data: {
-                labels: prestamo.pagos.map((_, index) => `Mes ${index + 1}`),
-                datasets: [{
-                    label: "Cuota Mensual",
-                    data: prestamo.pagos.map(p => parseFloat(p)),
-                    backgroundColor: "rgba(54, 162, 235, 0.2)",
-                    borderColor: "rgba(54, 162, 235, 1)",
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        chartContainer.style.display = "block";
-    }
-
-    form.addEventListener("submit", simularPrestamo);
 });
+
+// Asignar eventos a los botones
+document.getElementById("boton-simular").addEventListener("click", calcularPrestamo);
+document.getElementById("reiniciar").addEventListener("click", reiniciarSimulador);
+

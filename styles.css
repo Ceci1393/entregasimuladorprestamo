@@ -1,0 +1,69 @@
+/*Fondo y texto general */
+body {
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: Arial, sans-serif;
+}
+
+/*Contenedor principal */
+.container {
+    max-width: 700px;
+    margin-top: 50px;
+}
+
+/*Tarjetas de contenido */
+.card {
+    border-radius: 12px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: white;
+    padding: 20px;
+}
+
+/*Botón "Simular" */
+.btn-primary {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+.btn-primary:hover {
+    background-color: #004085;
+    border-color: #002752;
+}
+
+/*Botón "Reiniciar Simulador" - Color celeste */
+.btn-info {
+    background-color: #17a2b8;
+    border-color: #138496;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+/*Estilo del gráfico */
+#chartContainer {
+    display: none; /* Ahora lo ocultamos con CSS en lugar de JavaScript */
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/*Input de tasa deshabilitado */
+#tasa {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* Mejorar la visualización de los inputs y select */
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0056b3;
+    box-shadow: 0px 0px 5px rgba(0, 86, 179, 0.5);
+}
